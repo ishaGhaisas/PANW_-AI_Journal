@@ -11,6 +11,13 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Validate that all required environment variables are set
+if (!firebaseConfig.apiKey) {
+  throw new Error(
+    "Missing Firebase configuration."
+  );
+}
+
 let app: FirebaseApp;
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);

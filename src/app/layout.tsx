@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Libre_Baskerville, Roboto_Condensed } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/lib/auth/AuthProvider";
 
 const libreBaskerville = Libre_Baskerville({
   variable: "--font-journal",
@@ -15,7 +16,7 @@ const robotoCondensed = Roboto_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: "AI Journal",
+  title: "BuJo AI",
   description: "A bullet journal-inspired app with AI-powered reflection",
 };
 
@@ -29,7 +30,7 @@ export default function RootLayout({
       <body
         className={`${libreBaskerville.variable} ${robotoCondensed.variable} antialiased`}
       >
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
