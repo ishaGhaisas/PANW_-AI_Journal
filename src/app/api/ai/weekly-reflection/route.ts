@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWeeklyReflectionPrompt } from "@/lib/ai/prompts";
-import { getLastNJournalEntries } from "@/lib/firebase/journal";
-import { getUserGoals } from "@/lib/firebase/goals";
+import { getLastNJournalEntries } from "@/lib/firebase/journal.server";
+import { getUserGoals } from "@/lib/firebase/goals.server";
 import { logError } from "@/lib/utils/errorHandler";
 import { WEEKLY_REFLECTION_DAYS } from "@/lib/constants";
 import type { WeeklyReflectionResponse } from "@/types/ai";

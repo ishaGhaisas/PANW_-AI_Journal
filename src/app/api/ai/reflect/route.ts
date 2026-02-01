@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getReflectionPrompt } from "@/lib/ai/prompts";
 import { MOOD_OPTIONS } from "@/lib/moods";
-import { getUserGoals } from "@/lib/firebase/goals";
-import { getLastNJournalEntries } from "@/lib/firebase/journal";
+import { getUserGoals } from "@/lib/firebase/goals.server";
+import { getLastNJournalEntries } from "@/lib/firebase/journal.server";
 import { logError } from "@/lib/utils/errorHandler";
 import { RECENT_ENTRIES_CONTEXT_LIMIT } from "@/lib/constants";
 import type { ReflectionResponse } from "@/types/ai";
