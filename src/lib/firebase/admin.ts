@@ -1,14 +1,19 @@
 import { initializeApp, getApps, cert, App } from "firebase-admin/app";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
 
-let adminApp: App;
+let adminApp: App | null = null;
 
 /**
- * Initializes Firebase Admin SDK for server-side operations
+ * Initializes Firebase Admin SDK for server-side operations (lazy initialization)
  */
 function initializeAdminApp(): App {
+  if (adminApp) {
+    return adminApp;
+  }
+
   if (getApps().length > 0) {
-    return getApps()[0];
+    adminApp = getApps()[0];
+    return adminApp;
   }
 
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
@@ -31,13 +36,11 @@ function initializeAdminApp(): App {
 }
 
 /**
- * Gets Firestore instance for server-side operations
+ * Gets Firestore instance for server-side operations (lazy initialization)
  */
 export function getAdminFirestore(): Firestore {
-  if (!adminApp) {
-    initializeAdminApp();
-  }
+  initializeAdminApp();
   return getFirestore();
 }
 
-export default initializeAdminApp();
+export default initializeAdminApp;
