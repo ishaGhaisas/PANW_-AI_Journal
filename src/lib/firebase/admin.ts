@@ -17,17 +17,24 @@ function initializeAdminApp(): App {
   }
 
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   
-  if (!privateKey || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PROJECT_ID) {
+  if (!privateKey || !clientEmail || !projectId) {
+    const missing = [];
+    if (!privateKey) missing.push("FIREBASE_PRIVATE_KEY");
+    if (!clientEmail) missing.push("FIREBASE_CLIENT_EMAIL");
+    if (!projectId) missing.push("FIREBASE_PROJECT_ID or NEXT_PUBLIC_FIREBASE_PROJECT_ID");
+    
     throw new Error(
-      "Missing Firebase Admin configuration. Please set FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL, and FIREBASE_PROJECT_ID environment variables."
+      `Missing Firebase Admin configuration. Please set the following environment variables: ${missing.join(", ")}`
     );
   }
 
   adminApp = initializeApp({
     credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      projectId: projectId,
+      clientEmail: clientEmail,
       privateKey: privateKey,
     }),
   });

@@ -52,8 +52,14 @@ async function callAIForWeeklyReflection(
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`AI API error: ${error}`);
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch {
+        const errorText = await response.text();
+        errorData = { error: errorText };
+      }
+      throw new Error(`AI API error: ${JSON.stringify(errorData)}`);
     }
 
     const data = await response.json();

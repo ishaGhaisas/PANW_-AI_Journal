@@ -2,11 +2,26 @@
 
 # Design Goals
 
-## TODO: Why this problem?
-<!--
-Describe why journaling consistency is hard, what users struggle with today,
-and why existing tools fail to support reflection meaningfully.
--->
+## Why this problem?
+
+Journaling is a powerful tool for self-reflection and emotional processing, but maintaining consistency is challenging. Many users struggle with:
+
+- **Blank page anxiety** - Not knowing what to write or where to start
+- **Lack of structure** - Unclear how to organize thoughts and track patterns
+- **No feedback loop** - Writing feels one-sided without reflection or insights
+- **Overwhelming complexity** - Existing tools are either too simple (plain text) or too complex (productivity apps with gamification)
+
+Existing journaling tools often fail because they:
+- Focus on productivity metrics rather than emotional well-being
+- Lack meaningful structure (bullet journaling principles)
+- Don't provide gentle, non-clinical reflection assistance
+- Feel too clinical or too casual, missing the sweet spot
+
+**BuJo AI** addresses these gaps by combining:
+- The structured, intentional nature of bullet journaling
+- AI-powered empathetic reflection (not analysis or diagnosis)
+- A calm, non-clinical aesthetic that feels safe and personal
+- User control - AI assists but never dominates
 
 This project is designed as an **AI-augmented bullet journal**, not a productivity app, not a chatbot, and not a clinical mental-health tool.
 
@@ -145,16 +160,42 @@ The app intentionally uses a **small number of focused screens**. Each screen ex
 
 ---
 
-## 5. Goals (Weekly | Yearly)
+## 5. Goals (Weekly | Monthly)
 
 **Contains**
 - Weekly goals
-- Yearly goals
-- AI-generated encouragement and positive reinforcement
+- Monthly goals
+- AI-generated encouragement and positive reinforcement (mentioned in daily/weekly reflections)
 
 **Why this screen exists**
 - Bullet journaling often combines reflection with intention-setting.
 - Goals provide direction without pressure.
+- AI reflections mention goal progress organically.
+
+**Interaction Design**
+- Two distinct sections: "THIS WEEK" and "THIS MONTH"
+- Inline "+ jot a goal" inputs (no separate form)
+- Click to edit, hover × to delete
+- No explicit save/cancel buttons (auto-saves on blur/Enter)
+
+---
+
+## 6. Insights Dashboard
+
+**Contains**
+- Mood trends visualization (bar chart)
+- Recurring themes detection (keyword-based)
+- Gentle correlations (sleep vs mood, habits vs mood)
+
+**Why this screen exists**
+- Provides visual patterns without clinical analysis
+- All processing happens client-side (privacy-first)
+- Helps users notice patterns they might miss
+
+**Privacy-First Approach**
+- No data sent to external APIs for analysis
+- Rule-based theme detection (not ML)
+- Observational statements (not prescriptive)
 
 
 ---
@@ -238,18 +279,370 @@ Components used within pages can be Client Components (marked with `"use client"
 
 **Example:**
 ```tsx
-// app/journal/page.tsx (Server Component)
 import JournalEditor from "@/components/journal/JournalEditor";
 
 export default function JournalPage() {
-  // Server Component - can fetch data directly
-  return <JournalEditor />; // Client Component for interactivity
+  return <JournalEditor />;
 }
 ```
 
-## TODO: Why this tech stack?
-<!--
-Explain why Next.js, Tailwind, Firebase, and the chosen AI approach
-were selected, including tradeoffs and alternatives considered.
--->
+## Tech Stack
+
+### Frontend Framework
+- **Next.js 16.1.6** (App Router)
+  - **Why**: Server Components by default reduce client-side JavaScript, improve performance, and enable direct server-side data fetching
+  - **App Router**: Modern routing with layouts, loading states, and error boundaries
+  - **Tradeoff**: Learning curve vs. performance benefits (chose performance)
+
+- **React 19.2.3**
+  - **Why**: Industry standard, excellent ecosystem, Server Components support
+  - **Tradeoff**: Considered Vue/Svelte but React's Next.js integration is superior
+
+- **TypeScript 5**
+  - **Why**: Type safety catches errors early, improves developer experience, better IDE support
+  - **Tradeoff**: Slight development overhead vs. runtime error prevention (chose type safety)
+
+### Styling
+- **Tailwind CSS v4**
+  - **Why**: Utility-first approach enables rapid development, consistent design system, small bundle size
+  - **Tradeoff**: Considered CSS Modules or styled-components but Tailwind's developer experience and performance won
+  - **BEM Naming**: Used for component CSS files to maintain organization
+
+### Backend & Database
+- **Firebase 12.8.0** (Client SDK)
+  - **Why**: 
+    - Managed authentication (Email/Password) - no need to build auth system
+    - Firestore provides real-time updates, offline support, and automatic scaling
+    - Fast development cycle, no backend infrastructure to manage
+  - **Tradeoff**: Vendor lock-in vs. development speed (chose speed for MVP)
+  - **Security**: Firestore security rules ensure user data isolation
+
+- **Firebase Admin SDK 13.6.0** (Server SDK)
+  - **Why**: Required for server-side API routes to access Firestore without user authentication
+  - **Use Case**: AI reflection endpoints need to read user data server-side
+  - **Security**: Bypasses security rules (server-side only, never exposed to client)
+
+### AI Integration
+- **Google Gemini 2.5 Flash**
+  - **Why**: 
+    - Free tier available (cost-effective for MVP)
+    - Good balance of speed and quality
+    - Supports structured JSON output
+    - High token limits (4000 max output tokens)
+  - **Tradeoff**: Considered OpenAI GPT-4o-mini but switched due to quota issues; Gemini's free tier is more reliable
+  - **Prompt Engineering**: Custom prompts ensure empathetic, non-clinical responses
+
+### Development Tools
+- **ESLint** - Code quality and consistency
+- **Next.js ESLint Config** - Framework-specific best practices
+
+---
+
+## Why This Tech Stack?
+
+**Decision Framework:**
+1. **Development Speed** - Firebase eliminates backend infrastructure
+2. **Performance** - Next.js Server Components minimize client JavaScript
+3. **Type Safety** - TypeScript prevents runtime errors
+4. **Developer Experience** - Tailwind enables rapid UI development
+5. **Cost** - Firebase free tier + Gemini free tier = minimal costs for MVP
+6. **Scalability** - Firebase auto-scales, Next.js handles traffic well
+
+**Alternatives Considered:**
+- **Backend**: Supabase
+  - **Chose Firebase**: Best managed auth + database combo, fastest to implement
+- **AI**: OpenAI GPT-4o-mini, Anthropic Claude
+  - **Chose Gemini**: Free tier, reliable, good quality
+
+---
+
+## Data Model
+
+### Firestore Collections
+
+#### `journalEntries`
+```typescript
+{
+  userId: string;
+  date: Timestamp;
+  text: string;
+  moodSuggested: string;
+  moodManual?: string;
+  reflection: string;
+  followUpQuestion: string;
+  followUpResponse?: string;
+  habits?: Record<string, boolean>;
+  sleepHours?: number;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+#### `goals`
+```typescript
+{
+  userId: string;
+  type: "weekly" | "monthly";
+  text: string;
+  isCompleted: boolean;
+  isDeleted?: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+#### `userHabits`
+```typescript
+{
+  userId: string;
+  habits: Array<{
+    id: string;
+    label: string;
+    createdAt: Timestamp;
+  }>;
+  updatedAt: Timestamp;
+}
+```
+
+**Why this structure?**
+- User-scoped queries (`userId` field) ensure data isolation
+- Soft deletes for goals preserve data integrity
+- Optional fields (`habits`, `sleepHours`) don't require all users to track everything
+- Timestamps enable chronological sorting and filtering
+
+---
+
+## API Routes
+
+### `/api/ai/reflect` (POST)
+**Purpose**: Generate AI reflection on a journal entry
+
+**Input**:
+```typescript
+{
+  journalText: string;
+  userId?: string;
+}
+```
+
+**Output**:
+```typescript
+{
+  reflection: string;
+  mood: string;
+  followUpQuestion: string;
+  goalMention?: string;
+}
+```
+
+**Features**:
+- Context-aware (uses recent entries and goals)
+- Fallback responses if AI fails
+- Robust error handling for token limits
+- Partial JSON parsing for truncated responses
+
+### `/api/ai/weekly-reflection` (POST)
+**Purpose**: Generate weekly narrative summary
+
+**Input**:
+```typescript
+{
+  userId: string;
+}
+```
+
+**Output**:
+```typescript
+{
+  themes: string;
+  moodPatterns: string;
+  encouragement: string;
+  goalProgress?: string;
+}
+```
+
+**Features**:
+- Analyzes last 7 entries
+- Includes habits and goals context
+- Narrative format (not statistical)
+- Fallback responses if AI fails
+
+### `/api/ai/list-models` (GET)
+**Purpose**: List available Gemini models (for debugging)
+
+---
+
+## Environment Variables
+
+### Required for Development
+
+**Client-Side (NEXT_PUBLIC_*)**
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+```
+
+**Server-Side**
+```env
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
+AI_API_KEY=
+```
+
+---
+
+## Code Quality Principles
+
+### DRY (Don't Repeat Yourself)
+- Utility functions centralized in `lib/utils/`
+- API client abstraction in `lib/api/client.ts`
+- Constants centralized in `lib/constants/index.ts`
+- Type exports centralized in `types/index.ts`
+
+### Separation of Concerns
+- Each component has its own CSS file
+- Business logic in `lib/`, UI in `components/`
+- Server-side functions separate from client-side (`*.server.ts`)
+
+### Documentation
+- JSDoc comments on all functions
+- Type definitions for all data structures
+- README documents design decisions
+
+### Error Handling
+- Centralized error handler (`lib/utils/errorHandler.ts`)
+- User-friendly error messages
+- Graceful fallbacks for AI failures
+
+### CSS Organization
+- BEM naming convention for all CSS classes
+- Separate CSS files for each component
+- CSS variables for design tokens
+
+---
+
+## Security & Privacy
+
+### Authentication
+- Firebase Email/Password authentication
+- Protected routes with `ProtectedRoute` component
+- User-scoped data queries (`where("userId", "==", userId)`)
+
+### Data Privacy
+- **Client-Side Analytics**: Insights computed on-device, no external APIs
+- **Secure Storage**: Firestore with security rules
+- **User Data Isolation**: All queries filtered by `userId`
+- **No Data Sharing**: No social features, no data export to third parties
+
+### AI Disclaimer
+Explicit disclaimer shown to users:
+> "AI reflection is for self-reflection assistance only. Not a substitute for professional mental health care or diagnosis. Your journal entries are encrypted and stored securely."
+
+
+---
+
+## Deployment
+
+### Platform: Vercel
+- Automatic deployments from GitHub
+- Environment variables configured in Vercel dashboard
+- Serverless functions for API routes
+
+## Project Structure
+
+```
+ai_journal/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── (auth)/            # Auth routes
+│   │   ├── api/               # API routes
+│   │   ├── insights/          # Insights page
+│   │   ├── weekly-reflection/ # Weekly reflection page
+│   │   └── page.tsx           # Main journal page
+│   ├── components/
+│   │   ├── auth/              # Authentication components
+│   │   ├── journal/           # Journal components
+│   │   ├── layout/            # Layout components
+│   │   └── ui/                # Reusable UI components
+│   ├── lib/
+│   │   ├── ai/                # AI prompts
+│   │   ├── api/               # API client
+│   │   ├── auth/              # Auth utilities
+│   │   ├── constants/         # Constants
+│   │   ├── firebase/          # Firestore utilities
+│   │   ├── habits.ts          # Habit types
+│   │   ├── insights/           # Client-side analytics
+│   │   ├── moods.ts            # Mood definitions
+│   │   ├── moodCategories.ts  # Mood categorization
+│   │   └── utils/             # Utility functions
+│   └── types/                 # TypeScript types
+├── public/                     # Static assets
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+---
+
+## Features Summary
+
+### Implemented Features
+
+1. **Daily Journaling**
+   - Bullet journal-style editor with dotted background
+   - AI reflection with empathetic responses
+   - Context-aware follow-up questions
+   - Auto-clears after saving
+
+2. **Mood Tracking**
+   - 12 predefined moods
+   - 5 color-coded categories
+   - AI-suggested + manual override
+
+3. **Habit Tracking**
+   - User-defined habits
+   - Bullet dots (○/●) style
+   - Daily completion tracking
+
+4. **Sleep Tracking**
+   - Manual hours input
+   - Auto-save functionality
+
+5. **Goals Management**
+   - Weekly & Monthly goals
+   - Inline add/edit/delete
+   - AI integration
+
+6. **Past Entries**
+   - Chronological list
+   - Color-coded mood indicators
+   - Detail modal
+
+7. **Weekly Reflection**
+   - AI-generated narrative summary
+   - Themes, patterns, encouragement
+   - Appears after every 7 days
+
+8. **Insights Dashboard**
+   - Client-side analytics
+   - Mood trends visualization
+   - Theme detection
+   - Correlations
+
+9. **Authentication**
+   - Email/Password auth
+   - Protected routes
+   - Error handling
+
+### Future Enhancements (Documented, Not Implemented)
+
+- Shared journals (couples, families)
+- Long-term correlation analysis
+- Social features
+- Notifications and reminders
 

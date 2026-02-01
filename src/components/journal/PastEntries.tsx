@@ -29,9 +29,9 @@ function EntryDetailModal({ entry, onClose, userHabitLabels }: EntryDetailModalP
   const displayMood = entry.moodManual || entry.moodSuggested;
 
   return (
-    <div className="past-entries__modal-overlay">
-      <div className="past-entries__modal-content">
-        <button onClick={onClose} className="past-entries__modal-close">
+    <div className="past-entries__modal-overlay" onClick={onClose}>
+      <div className="past-entries__modal-content" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="past-entries__modal-close" aria-label="Close">
           ×
         </button>
         <h2 className="past-entries__modal-title">{formattedDate}</h2>

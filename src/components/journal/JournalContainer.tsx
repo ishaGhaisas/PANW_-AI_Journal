@@ -64,6 +64,13 @@ export default function JournalContainer() {
         if (journalText === "") {
           setJournalText(entry.text);
         }
+        if (entry.reflection && entry.moodSuggested && entry.followUpQuestion) {
+          setReflection({
+            reflection: entry.reflection,
+            mood: entry.moodSuggested,
+            followUpQuestion: entry.followUpQuestion,
+          });
+        }
         if (entry.moodManual) {
           setManualMood(entry.moodManual as Mood);
         }
@@ -203,7 +210,7 @@ export default function JournalContainer() {
     }
   };
 
-  const shouldShowReflection = reflection && (!todayEntry || journalText !== todayEntry.text);
+  const shouldShowReflection = reflection !== null;
   const hasReflection = !!reflection;
 
   return (
