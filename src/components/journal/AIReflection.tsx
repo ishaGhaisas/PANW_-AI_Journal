@@ -3,39 +3,38 @@
 import type { ReflectionResponse } from "@/types/ai";
 import MoodDisplay from "./MoodDisplay";
 import type { Mood } from "@/lib/moods";
+import "./AIReflection.css";
 
 type AIReflectionProps = {
   reflection: ReflectionResponse | null;
   currentMood?: string | null;
   onMoodChange?: (mood: Mood | null) => void;
+  followUpResponse?: string;
+  onFollowUpResponseChange?: (response: string) => void;
 };
 
-export default function AIReflection({ 
-  reflection, 
+/**
+ * Component displaying AI-generated reflection, mood suggestion, and follow-up question
+ */
+export default function AIReflection({
+  reflection,
   currentMood,
-  onMoodChange 
+  onMoodChange,
+  followUpResponse = "",
+  onFollowUpResponseChange,
 }: AIReflectionProps) {
   if (!reflection) {
     return null;
   }
 
   return (
-    <div className="mt-8 space-y-6 rounded-lg bg-[var(--color-paper)] p-6 border border-[var(--color-shell)]">
-      {/* Reflection */}
-      <div>
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-          Reflection
-        </h3>
-        <p
-          className="font-journal text-base leading-relaxed text-[var(--color-text)]"
-          style={{ fontFamily: "var(--font-journal)" }}
-        >
-          {reflection.reflection}
-        </p>
+    <div className="ai-reflection">
+      <div className="ai-reflection__section">
+        <h3 className="ai-reflection__section-header">Reflection</h3>
+        <p className="ai-reflection__text">{reflection.reflection}</p>
       </div>
 
-      {/* Mood */}
-      <div>
+      <div className="ai-reflection__section">
         <MoodDisplay
           suggestedMood={reflection.mood}
           currentMood={currentMood}
@@ -43,16 +42,30 @@ export default function AIReflection({
         />
       </div>
 
-      {/* Follow-up Question */}
-      <div>
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-          Follow-up Question
-        </h3>
-        <p
-          className="font-journal text-base leading-relaxed text-[var(--color-text)] italic"
-          style={{ fontFamily: "var(--font-journal)" }}
-        >
-          {reflection.followUpQuestion}
+      <div className="ai-reflection__section">
+        <h3 className="ai-reflection__section-header">Follow-up Question</h3>
+        <p className="ai-reflection__question">{reflection.followUpQuestion}</p>
+        <div className="ai-reflection__response-container">
+          <textarea
+            value={followUpResponse}
+            onChange={(e) => onFollowUpResponseChange?.(e.target.value)}
+            placeholder="You can jot a response here (optional)"
+            rows={2}
+            className="ai-reflection__response-textarea"
+          />
+        </div>
+      </div>
+
+      {reflection.goalMention && (
+        <div className="ai-reflection__goal-mention">
+          <h3 className="ai-reflection__goal-mention-header">Goal Progress</h3>
+          <p className="ai-reflection__goal-mention-text">{reflection.goalMention}</p>
+        </div>
+      )}
+
+      <div className="ai-reflection__disclaimer">
+        <p className="ai-reflection__disclaimer-text">
+          AI reflection is for self-reflection assistance only. Not a substitute for professional mental health care or diagnosis. Your journal entries are encrypted and stored securely.
         </p>
       </div>
     </div>

@@ -11,6 +11,7 @@ export type JournalEntry = {
   moodManual?: string; // User's manual mood override (optional)
   reflection: string; // AI reflection text
   followUpQuestion: string; // AI follow-up question
+  followUpResponse?: string; // User's optional response to follow-up question
   habits?: Habits; // Daily habits tracking (e.g., { walk: true, water: false, read: true })
   sleepHours?: number; // Hours slept (0-12, optional)
   createdAt: Date | Timestamp;
@@ -23,4 +24,5 @@ export type JournalEntryInput = {
   moodManual?: string;
   habits?: Habits;
   sleepHours?: number;
+  followUpResponse?: string;
 };

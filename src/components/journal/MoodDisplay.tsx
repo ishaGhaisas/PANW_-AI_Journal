@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { MOOD_OPTIONS, type Mood } from "@/lib/moods";
+import "./MoodDisplay.css";
 
 type MoodDisplayProps = {
   suggestedMood: string;
@@ -9,6 +10,9 @@ type MoodDisplayProps = {
   onMoodChange?: (mood: Mood | null) => void;
 };
 
+/**
+ * Component for displaying and selecting mood with override capability
+ */
 export default function MoodDisplay({
   suggestedMood,
   currentMood,
@@ -22,12 +26,18 @@ export default function MoodDisplay({
   const displayMood = selectedMood || suggestedMood;
   const isOverridden = selectedMood !== null;
 
+  /**
+   * Handles mood selection from dropdown
+   */
   const handleMoodSelect = (mood: Mood) => {
     setSelectedMood(mood);
     setIsEditing(false);
     onMoodChange?.(mood);
   };
 
+  /**
+   * Clears mood override and uses suggested mood
+   */
   const handleClearOverride = () => {
     setSelectedMood(null);
     setIsEditing(false);
@@ -35,51 +45,44 @@ export default function MoodDisplay({
   };
 
   return (
-    <div className="relative">
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+    <div className="mood-display">
+      <div className="mood-display__container">
+        <span className="mood-display__label">
           {isOverridden ? "Your Mood" : "Suggested Mood"}:
         </span>
         <div className="relative">
           <button
             onClick={() => setIsEditing(!isEditing)}
-            className="flex items-center gap-2 rounded-lg border border-[var(--color-shell)] bg-[var(--color-paper)] px-4 py-2 text-base font-medium text-[var(--color-text)] transition-colors hover:border-[var(--color-accent)] hover:bg-[var(--color-shell)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2"
+            className="mood-display__button"
           >
             <span>{displayMood}</span>
-            <span className="text-[var(--color-muted)]">✏️</span>
           </button>
 
           {isEditing && (
             <>
-              {/* Backdrop to close dropdown */}
               <div
-                className="fixed inset-0 z-10"
+                className="mood-display__backdrop"
                 onClick={() => setIsEditing(false)}
               />
-              
-              {/* Dropdown menu */}
-              <div className="absolute left-0 top-full z-20 mt-2 w-48 rounded-lg border border-[var(--color-shell)] bg-[var(--color-paper)] shadow-lg">
-                <div className="max-h-64 overflow-y-auto p-2">
+              <div className="mood-display__dropdown">
+                <div className="mood-display__dropdown-content">
                   {MOOD_OPTIONS.map((mood) => (
                     <button
                       key={mood}
                       onClick={() => handleMoodSelect(mood)}
-                      className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                        selectedMood === mood
-                          ? "bg-[var(--color-accent)] text-white"
-                          : "text-[var(--color-text)] hover:bg-[var(--color-shell)]"
+                      className={`mood-display__option ${
+                        selectedMood === mood ? "mood-display__option--selected" : ""
                       }`}
                     >
                       {mood}
                     </button>
                   ))}
-                  
                   {isOverridden && (
                     <>
-                      <div className="my-2 border-t border-[var(--color-shell)]" />
+                      <div className="mood-display__divider" />
                       <button
                         onClick={handleClearOverride}
-                        className="w-full rounded-md px-3 py-2 text-left text-sm text-[var(--color-muted)] hover:bg-[var(--color-shell)]"
+                        className="mood-display__clear-button"
                       >
                         Use suggested: {suggestedMood}
                       </button>
@@ -91,11 +94,8 @@ export default function MoodDisplay({
           )}
         </div>
       </div>
-      
       {isOverridden && (
-        <p className="mt-2 text-xs text-[var(--color-muted)]">
-          Suggested: {suggestedMood}
-        </p>
+        <p className="mood-display__hint">Suggested: {suggestedMood}</p>
       )}
     </div>
   );

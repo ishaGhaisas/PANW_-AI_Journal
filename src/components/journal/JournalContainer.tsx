@@ -7,79 +7,117 @@ import Button from "@/components/ui/Button";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { saveJournalEntry, getTodayJournalEntry, updateJournalEntry } from "@/lib/firebase/journal";
 import { useJournalState } from "./JournalStateContext";
+import { reflectOnEntry } from "@/lib/api/client";
+import { isNonEmptyString, isAuthenticated } from "@/lib/utils/validation";
+import { getUserFriendlyError } from "@/lib/utils/errorHandler";
+import { SUCCESS_MESSAGE_DURATION } from "@/lib/constants";
 import type { ReflectionResponse } from "@/types/ai";
 import type { JournalEntry } from "@/types/journal";
 import type { Mood } from "@/lib/moods";
+import "./JournalContainer.css";
 
 export default function JournalContainer() {
   const { user } = useAuth();
-  const { habits, setHabits, sleepHours, setSleepHours } = useJournalState();
+  const {
+    habits,
+    setHabits,
+    sleepHours,
+    setSleepHours,
+    setJournalText: setContextJournalText,
+    setReflection: setContextReflection,
+  } = useJournalState();
   const [reflection, setReflection] = useState<ReflectionResponse | null>(null);
   const [journalText, setJournalText] = useState("");
   const [todayEntry, setTodayEntry] = useState<JournalEntry | null>(null);
   const [manualMood, setManualMood] = useState<Mood | null>(null);
+  const [followUpResponse, setFollowUpResponse] = useState("");
   const [saving, setSaving] = useState(false);
   const [reflecting, setReflecting] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [reflectError, setReflectError] = useState("");
 
-  // Load today's entry on mount
+  useEffect(() => {
+    setContextJournalText(journalText);
+  }, [journalText, setContextJournalText]);
+
+  useEffect(() => {
+    setContextReflection(reflection);
+  }, [reflection, setContextReflection]);
+
   useEffect(() => {
     if (user) {
       loadTodayEntry();
     }
   }, [user]);
 
+  /**
+   * Loads today's journal entry and restores state
+   */
   const loadTodayEntry = async () => {
-    if (!user) return;
+    if (!isAuthenticated(user)) return;
 
     try {
       const entry = await getTodayJournalEntry(user.uid);
       if (entry) {
         setTodayEntry(entry);
-        setJournalText(entry.text);
-        // Restore manual mood if it exists
+        if (journalText === "") {
+          setJournalText(entry.text);
+        }
         if (entry.moodManual) {
           setManualMood(entry.moodManual as Mood);
         }
-        // Restore habits if they exist
         if (entry.habits) {
           setHabits(entry.habits);
         }
-        // Restore sleep hours if it exists
         if (entry.sleepHours !== undefined && entry.sleepHours !== null) {
           setSleepHours(entry.sleepHours);
         }
-        // Restore reflection if it exists
-        if (entry.reflection && entry.moodSuggested && entry.followUpQuestion) {
-          setReflection({
-            reflection: entry.reflection,
-            mood: entry.moodSuggested,
-            followUpQuestion: entry.followUpQuestion,
-          });
+        if (entry.followUpResponse) {
+          setFollowUpResponse(entry.followUpResponse);
         }
       }
     } catch (error) {
-      console.error("Failed to load today's entry:", error);
+      getUserFriendlyError(error, "Failed to load today's entry");
     }
   };
 
+  /**
+   * Handles completion of AI reflection
+   */
   const handleReflectionComplete = (reflectionData: ReflectionResponse) => {
     setReflection(reflectionData);
-    setSaveSuccess(false); // Reset save success when new reflection is generated
-    setReflectError(""); // Clear any reflect errors
-    // Reset manual mood when new reflection is generated (user can override again)
+    setSaveSuccess(false);
+    setReflectError("");
     setManualMood(null);
+    setFollowUpResponse("");
   };
 
+  /**
+   * Handles manual mood change
+   */
   const handleMoodChange = (mood: Mood | null) => {
     setManualMood(mood);
-    setSaveSuccess(false); // Reset save success when mood changes
+    setSaveSuccess(false);
   };
 
+  /**
+   * Builds entry data for saving/updating
+   */
+  const buildEntryData = () => ({
+    text: journalText,
+    reflection: reflection!,
+    moodManual: manualMood || undefined,
+    habits: Object.keys(habits).length > 0 ? habits : undefined,
+    sleepHours: sleepHours,
+    followUpResponse: isNonEmptyString(followUpResponse) ? followUpResponse.trim() : undefined,
+  });
+
+  /**
+   * Calls AI API to reflect again on updated journal text
+   */
   const handleReflectAgain = async () => {
-    if (!journalText.trim()) {
+    if (!isNonEmptyString(journalText)) {
       setReflectError("Please write something before reflecting");
       return;
     }
@@ -89,37 +127,27 @@ export default function JournalContainer() {
     setSaveSuccess(false);
 
     try {
-      const response = await fetch("/api/ai/reflect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: journalText }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to get reflection");
-      }
-
-      const data = (await response.json()) as ReflectionResponse;
-      setReflection(data);
-      // Reset manual mood when new reflection is generated
+      const data = await reflectOnEntry(journalText, user?.uid);
+      setReflection(data as ReflectionResponse);
       setManualMood(null);
-    } catch (err: any) {
-      setReflectError(err.message || "Failed to reflect. Please try again.");
+      setFollowUpResponse("");
+    } catch (err: unknown) {
+      setReflectError(getUserFriendlyError(err, "Failed to reflect. Please try again."));
     } finally {
       setReflecting(false);
     }
   };
 
+  /**
+   * Saves or updates the journal entry
+   */
   const handleSave = async () => {
-    if (!user) {
+    if (!isAuthenticated(user)) {
       setSaveError("You must be logged in to save");
       return;
     }
 
-    if (!journalText.trim()) {
+    if (!isNonEmptyString(journalText)) {
       setSaveError("Please write something before saving");
       return;
     }
@@ -134,43 +162,49 @@ export default function JournalContainer() {
     setSaveSuccess(false);
 
     try {
+      const entryData = buildEntryData();
+
       if (todayEntry?.id) {
-        // Update existing entry
-        await updateJournalEntry(todayEntry.id, {
-          text: journalText,
-          reflection: reflection,
-          moodManual: manualMood || undefined,
-          habits: Object.keys(habits).length > 0 ? habits : undefined,
-          sleepHours: sleepHours,
+        await updateJournalEntry(todayEntry.id, entryData);
+        setTodayEntry({
+          ...todayEntry,
+          text: entryData.text,
+          moodManual: entryData.moodManual,
+          habits: entryData.habits,
+          sleepHours: entryData.sleepHours,
+          followUpResponse: entryData.followUpResponse,
+          reflection: reflection.reflection,
+          moodSuggested: reflection.mood,
+          followUpQuestion: reflection.followUpQuestion,
         });
       } else {
-        // Create new entry
-        await saveJournalEntry(user.uid, {
-          text: journalText,
-          reflection: reflection,
-          moodManual: manualMood || undefined,
-          habits: Object.keys(habits).length > 0 ? habits : undefined,
-          sleepHours: sleepHours,
-        });
+        await saveJournalEntry(user.uid, entryData);
+        const newEntry = await getTodayJournalEntry(user.uid);
+        if (newEntry) {
+          setTodayEntry(newEntry);
+        }
       }
 
       setSaveSuccess(true);
-      setReflectError(""); // Clear reflect errors on successful save
-      // Reload today's entry to get the updated data
-      await loadTodayEntry();
+      setReflectError("");
       
-      // Clear reflection after saving (but keep habits and sleep)
+      setJournalText("");
       setReflection(null);
       setManualMood(null);
+      setFollowUpResponse("");
+      setHabits({});
+      setSleepHours(undefined);
       
-      // Clear success message after 3 seconds
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err: any) {
-      setSaveError(err.message || "Failed to save entry");
+      setTimeout(() => setSaveSuccess(false), SUCCESS_MESSAGE_DURATION);
+    } catch (err: unknown) {
+      setSaveError(getUserFriendlyError(err, "Failed to save entry"));
     } finally {
       setSaving(false);
     }
   };
+
+  const shouldShowReflection = reflection && (!todayEntry || journalText !== todayEntry.text);
+  const hasReflection = !!reflection;
 
   return (
     <div>
@@ -178,37 +212,28 @@ export default function JournalContainer() {
         value={journalText}
         onChange={setJournalText}
         onReflectionComplete={handleReflectionComplete}
+        userId={user?.uid}
       />
-      <AIReflection 
-        reflection={reflection} 
-        currentMood={manualMood}
-        onMoodChange={handleMoodChange}
-      />
-      
-      {/* Reflect Again and Save buttons */}
-      {reflection && (
-        <div className="mt-6">
-          {saveError && (
-            <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-              {saveError}
-            </div>
-          )}
-          {reflectError && (
-            <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-              {reflectError}
-            </div>
-          )}
-          {saveSuccess && (
-            <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-600">
-              Entry saved successfully!
-            </div>
-          )}
-          <div className="flex justify-end gap-3">
+      {shouldShowReflection && (
+        <AIReflection
+          reflection={reflection}
+          currentMood={manualMood}
+          onMoodChange={handleMoodChange}
+          followUpResponse={followUpResponse}
+          onFollowUpResponseChange={setFollowUpResponse}
+        />
+      )}
+      {hasReflection && (
+        <div className="journal-container__buttons">
+          {saveError && <div className="journal-container__error">{saveError}</div>}
+          {reflectError && <div className="journal-container__error">{reflectError}</div>}
+          {saveSuccess && <div className="journal-container__message journal-container__message--success">Entry saved successfully!</div>}
+          <div className="journal-container__buttons-wrapper">
             <Button
               onClick={handleReflectAgain}
               variant="secondary"
               loading={reflecting}
-              disabled={!journalText.trim() || reflecting || saving}
+              disabled={!isNonEmptyString(journalText) || reflecting || saving}
             >
               Reflect Again
             </Button>
@@ -216,7 +241,7 @@ export default function JournalContainer() {
               onClick={handleSave}
               variant="primary"
               loading={saving}
-              disabled={!journalText.trim() || !reflection || reflecting || saving}
+              disabled={!isNonEmptyString(journalText) || !reflection || reflecting || saving}
             >
               {todayEntry ? "Update Entry" : "Save Entry"}
             </Button>

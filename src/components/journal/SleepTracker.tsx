@@ -2,14 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { useJournalState } from "./JournalStateContext";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { getTodayJournalEntry, updateJournalEntry } from "@/lib/firebase/journal";
+import { getUserFriendlyError, logError } from "@/lib/utils/errorHandler";
+import { isAuthenticated } from "@/lib/utils/validation";
+import "./SleepTracker.css";
 
+const MAX_SLEEP_HOURS = 12;
+
+/**
+ * Component for tracking sleep hours with auto-save functionality
+ */
 export default function SleepTracker() {
+  const { user } = useAuth();
   const { sleepHours, setSleepHours } = useJournalState();
   const [localValue, setLocalValue] = useState<string>(
     sleepHours?.toString() || ""
   );
+  const [saving, setSaving] = useState(false);
 
-  // Sync local value when sleepHours changes externally
   useEffect(() => {
     if (sleepHours !== undefined && sleepHours !== null) {
       setLocalValue(sleepHours.toString());
@@ -18,70 +29,92 @@ export default function SleepTracker() {
     }
   }, [sleepHours]);
 
+  /**
+   * Handles input value changes
+   */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setLocalValue(value);
 
-    // Parse the value
     if (value === "" || value === undefined) {
       setSleepHours(undefined);
       return;
     }
 
     const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue >= 0 && numValue <= 12) {
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= MAX_SLEEP_HOURS) {
       setSleepHours(numValue);
     } else if (value === "") {
       setSleepHours(undefined);
     }
   };
 
-  const handleBlur = () => {
-    // Validate on blur
+  /**
+   * Validates and auto-saves sleep hours on blur
+   */
+  const handleBlur = async () => {
+    let finalValue: number | undefined = undefined;
+
     if (localValue === "" || localValue === undefined) {
       setSleepHours(undefined);
-      return;
+      finalValue = undefined;
+    } else {
+      const numValue = parseFloat(localValue);
+      if (isNaN(numValue) || numValue < 0) {
+        setLocalValue("");
+        setSleepHours(undefined);
+        finalValue = undefined;
+      } else if (numValue > MAX_SLEEP_HOURS) {
+        setLocalValue(MAX_SLEEP_HOURS.toString());
+        setSleepHours(MAX_SLEEP_HOURS);
+        finalValue = MAX_SLEEP_HOURS;
+      } else {
+        setLocalValue(numValue.toString());
+        setSleepHours(numValue);
+        finalValue = numValue;
+      }
     }
 
-    const numValue = parseFloat(localValue);
-    if (isNaN(numValue) || numValue < 0) {
-      setLocalValue("");
-      setSleepHours(undefined);
-    } else if (numValue > 12) {
-      setLocalValue("12");
-      setSleepHours(12);
-    } else {
-      setLocalValue(numValue.toString());
-      setSleepHours(numValue);
+    if (isAuthenticated(user)) {
+      try {
+        setSaving(true);
+        const todayEntry = await getTodayJournalEntry(user.uid);
+
+        if (todayEntry?.id) {
+          await updateJournalEntry(todayEntry.id, {
+            sleepHours: finalValue,
+          });
+        }
+      } catch (error) {
+        logError("Failed to auto-save sleep", error);
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
   return (
-    <div className="rounded-lg bg-[var(--color-shell)] p-6">
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-        SLEEP
-      </h2>
+    <div className="sleep-tracker">
+      <h2 className="sleep-tracker__header">SLEEP</h2>
       <div>
-        <label
-          htmlFor="sleep-hours"
-          className="mb-2 block text-sm text-[var(--color-muted)]"
-        >
+        <label htmlFor="sleep-hours" className="sleep-tracker__label">
           Hours slept
         </label>
         <input
           id="sleep-hours"
           type="number"
           min="0"
-          max="12"
+          max={MAX_SLEEP_HOURS}
           step="0.5"
           value={localValue}
           onChange={handleChange}
           onBlur={handleBlur}
           placeholder="—"
-          className="w-full rounded-md border border-[var(--color-shell)] bg-[var(--color-paper)] px-3 py-2 text-base text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2"
+          disabled={saving}
+          className="sleep-tracker__input"
         />
-        <p className="mt-2 text-xs text-[var(--color-muted)]">
-          Optional — leave blank if you don't remember
+        <p className="sleep-tracker__hint">
+          {saving ? "Saving..." : "Optional — auto-saves when journal entry exists"}
         </p>
       </div>
     </div>

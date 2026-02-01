@@ -1,0 +1,56 @@
+.weekly-reflection {
+  border-radius: 0.5rem;
+  background-color: var(--color-shell);
+  padding: 1.5rem;
+}
+
+.weekly-reflection__header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}
+
+.weekly-reflection__header-container {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.weekly-reflection__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.weekly-reflection__section {
+  display: flex;
+  flex-direction: column;
+}
+
+.weekly-reflection__section-header {
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}
+
+.weekly-reflection__text {
+  font-family: var(--font-journal);
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: var(--color-text);
+}
+
+.weekly-reflection__text--italic {
+  font-style: italic;
+}
+
+.weekly-reflection__empty {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}

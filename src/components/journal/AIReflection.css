@@ -1,0 +1,114 @@
+.ai-reflection {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-radius: 0.5rem;
+  background-color: var(--color-paper);
+  padding: 1rem;
+  border: 1px solid var(--color-shell);
+}
+
+@media (min-width: 640px) {
+  .ai-reflection {
+    margin-top: 2rem;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+}
+
+.ai-reflection__section {
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-reflection__section-header {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}
+
+.ai-reflection__text {
+  font-family: var(--font-journal);
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--color-text);
+}
+
+.ai-reflection__question {
+  font-family: var(--font-journal);
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--color-text);
+  font-style: italic;
+  margin-bottom: 0.75rem;
+}
+
+.ai-reflection__response-container {
+  margin-top: 0.75rem;
+}
+
+.ai-reflection__response-textarea {
+  width: 100%;
+  resize: none;
+  border-radius: 0.25rem;
+  border: 1px solid rgba(var(--color-muted), 0.3);
+  background-color: transparent;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  font-family: var(--font-journal);
+}
+
+.ai-reflection__response-textarea::placeholder {
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.ai-reflection__response-textarea:focus {
+  border-color: rgba(var(--color-accent), 0.5);
+  outline: none;
+  ring: 1px;
+  ring-color: rgba(var(--color-accent), 0.2);
+}
+
+.ai-reflection__goal-mention {
+  margin-top: 1rem;
+  border-radius: 0.5rem;
+  background-color: rgba(var(--color-accent), 0.1);
+  padding: 1rem;
+  border: 1px solid rgba(var(--color-accent), 0.2);
+}
+
+.ai-reflection__goal-mention-header {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-accent);
+}
+
+.ai-reflection__goal-mention-text {
+  font-family: var(--font-journal);
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: var(--color-text);
+}
+
+.ai-reflection__disclaimer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(var(--color-muted), 0.2);
+  text-align: center;
+}
+
+.ai-reflection__disclaimer-text {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  font-style: italic;
+  line-height: 1.75;
+}

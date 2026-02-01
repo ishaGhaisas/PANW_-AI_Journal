@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { getUserFriendlyError } from "@/lib/utils/errorHandler";
+import "./LoginForm.css";
 
+/**
+ * Login form component for user authentication
+ */
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,16 +19,25 @@ export default function LoginForm() {
   const { signIn } = useAuth();
   const router = useRouter();
 
+  /**
+   * Handles email input changes
+   */
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
     if (error) setError("");
   };
 
+  /**
+   * Handles password input changes
+   */
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
     if (error) setError("");
   };
 
+  /**
+   * Handles form submission and user login
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -32,37 +46,25 @@ export default function LoginForm() {
     try {
       await signIn(email, password);
       router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Failed to sign in");
+    } catch (err: unknown) {
+      setError(getUserFriendlyError(err, "Failed to sign in"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full">
-      <div className="mb-8 text-center lg:hidden">
-        <h1
-          className="font-journal text-4xl font-bold text-[var(--color-text)]"
-          style={{ fontFamily: "var(--font-journal)" }}
-        >
-          BuJo AI
-        </h1>
+    <div className="login-form">
+      <div className="login-form__mobile-title">
+        <h1 className="login-form__title">BuJo AI</h1>
       </div>
 
-      <h2 className="mb-2 text-2xl font-semibold text-[var(--color-text)]">
-        Welcome back
-      </h2>
-      <p className="mb-8 text-[var(--color-muted)]">
-        Sign in to continue your journaling journey
-      </p>
+      <h2 className="login-form__heading">Welcome back</h2>
+      <p className="login-form__subheading">Sign in to continue your journaling journey</p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label
-            htmlFor="email"
-            className="mb-2 block text-sm font-medium text-[var(--color-text)]"
-          >
+      <form onSubmit={handleSubmit} className="login-form__form">
+        <div className="login-form__field">
+          <label htmlFor="email" className="login-form__label">
             Email
           </label>
           <input
@@ -71,16 +73,13 @@ export default function LoginForm() {
             value={email}
             onChange={handleEmailChange}
             required
-            className="w-full rounded-lg border border-[var(--color-shell)] bg-white px-4 py-3 text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2"
+            className="login-form__input"
             placeholder="you@example.com"
           />
         </div>
 
-        <div>
-          <label
-            htmlFor="password"
-            className="mb-2 block text-sm font-medium text-[var(--color-text)]"
-          >
+        <div className="login-form__field">
+          <label htmlFor="password" className="login-form__label">
             Password
           </label>
           <input
@@ -89,29 +88,22 @@ export default function LoginForm() {
             value={password}
             onChange={handlePasswordChange}
             required
-            className="w-full rounded-lg border border-[var(--color-shell)] bg-white px-4 py-3 text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2"
+            className="login-form__input"
             placeholder="••••••••"
           />
         </div>
 
-        <div>
+        <div className="login-form__field">
           <Button type="submit" variant="primary" loading={loading} className="w-full">
             Sign in
           </Button>
-          {error && (
-            <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-              {error}
-            </div>
-          )}
+          {error && <div className="login-form__error">{error}</div>}
         </div>
       </form>
 
-      <p className="mt-6 text-center text-sm text-[var(--color-muted)]">
+      <p className="login-form__footer">
         Don't have an account?{" "}
-        <Link
-          href="/register"
-          className="font-semibold text-[var(--color-accent)] hover:underline"
-        >
+        <Link href="/register" className="login-form__link">
           Sign up
         </Link>
       </p>

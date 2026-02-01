@@ -1,0 +1,60 @@
+.sleep-tracker {
+  border-radius: 0.5rem;
+  background-color: var(--color-shell);
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .sleep-tracker {
+    padding: 1.5rem;
+  }
+}
+
+.sleep-tracker__header {
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}
+
+.sleep-tracker__label {
+  margin-bottom: 0.5rem;
+  display: block;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.sleep-tracker__input {
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-shell);
+  background-color: var(--color-paper);
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.sleep-tracker__input::placeholder {
+  color: var(--color-muted);
+}
+
+.sleep-tracker__input:focus {
+  border-color: var(--color-accent);
+  outline: none;
+  ring: 2px;
+  ring-color: var(--color-accent);
+  ring-offset: 2px;
+}
+
+.sleep-tracker__input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sleep-tracker__hint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}

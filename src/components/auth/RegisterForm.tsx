@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { getUserFriendlyError } from "@/lib/utils/errorHandler";
+import { isNonEmptyString } from "@/lib/utils/validation";
+import "./RegisterForm.css";
 
+const MIN_PASSWORD_LENGTH = 6;
+
+/**
+ * Registration form component for creating new user accounts
+ */
 export default function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,21 +23,33 @@ export default function RegisterForm() {
   const { signUp } = useAuth();
   const router = useRouter();
 
+  /**
+   * Handles email input changes
+   */
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
     if (error) setError("");
   };
 
+  /**
+   * Handles password input changes
+   */
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
     if (error) setError("");
   };
 
+  /**
+   * Handles confirm password input changes
+   */
   const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setConfirmPassword(e.target.value);
     if (error) setError("");
   };
 
+  /**
+   * Validates form and handles user registration
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -41,8 +61,8 @@ export default function RegisterForm() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (!isNonEmptyString(password) || password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
       setLoading(false);
       return;
     }
@@ -50,37 +70,25 @@ export default function RegisterForm() {
     try {
       await signUp(email, password);
       router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Failed to create account");
+    } catch (err: unknown) {
+      setError(getUserFriendlyError(err, "Failed to create account"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full">
-      <div className="mb-8 text-center lg:hidden">
-        <h1
-          className="font-journal text-4xl font-bold text-[var(--color-text)]"
-          style={{ fontFamily: "var(--font-journal)" }}
-        >
-          BuJo AI
-        </h1>
+    <div className="register-form">
+      <div className="register-form__mobile-title">
+        <h1 className="register-form__title">BuJo AI</h1>
       </div>
 
-      <h2 className="mb-2 text-2xl font-semibold text-[var(--color-text)]">
-        Create your account
-      </h2>
-      <p className="mb-8 text-[var(--color-muted)]">
-        Start your journaling journey today
-      </p>
+      <h2 className="register-form__heading">Create your account</h2>
+      <p className="register-form__subheading">Start your journaling journey today</p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label
-            htmlFor="email"
-            className="mb-2 block text-sm font-medium text-[var(--color-text)]"
-          >
+      <form onSubmit={handleSubmit} className="register-form__form">
+        <div className="register-form__field">
+          <label htmlFor="email" className="register-form__label">
             Email
           </label>
           <input
@@ -89,16 +97,13 @@ export default function RegisterForm() {
             value={email}
             onChange={handleEmailChange}
             required
-            className="w-full rounded-lg border border-[var(--color-shell)] bg-white px-4 py-3 text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2"
+            className="register-form__input"
             placeholder="you@example.com"
           />
         </div>
 
-        <div>
-          <label
-            htmlFor="password"
-            className="mb-2 block text-sm font-medium text-[var(--color-text)]"
-          >
+        <div className="register-form__field">
+          <label htmlFor="password" className="register-form__label">
             Password
           </label>
           <input
@@ -107,20 +112,15 @@ export default function RegisterForm() {
             value={password}
             onChange={handlePasswordChange}
             required
-            minLength={6}
-            className="w-full rounded-lg border border-[var(--color-shell)] bg-white px-4 py-3 text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2"
+            minLength={MIN_PASSWORD_LENGTH}
+            className="register-form__input"
             placeholder="••••••••"
           />
-          <p className="mt-1 text-xs text-[var(--color-muted)]">
-            At least 6 characters
-          </p>
+          <p className="register-form__hint">At least {MIN_PASSWORD_LENGTH} characters</p>
         </div>
 
-        <div>
-          <label
-            htmlFor="confirmPassword"
-            className="mb-2 block text-sm font-medium text-[var(--color-text)]"
-          >
+        <div className="register-form__field">
+          <label htmlFor="confirmPassword" className="register-form__label">
             Confirm Password
           </label>
           <input
@@ -129,29 +129,22 @@ export default function RegisterForm() {
             value={confirmPassword}
             onChange={handleConfirmPasswordChange}
             required
-            className="w-full rounded-lg border border-[var(--color-shell)] bg-white px-4 py-3 text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2"
+            className="register-form__input"
             placeholder="••••••••"
           />
         </div>
 
-        <div>
+        <div className="register-form__field">
           <Button type="submit" variant="primary" loading={loading} className="w-full">
             Create account
           </Button>
-          {error && (
-            <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-              {error}
-            </div>
-          )}
+          {error && <div className="register-form__error">{error}</div>}
         </div>
       </form>
 
-      <p className="mt-6 text-center text-sm text-[var(--color-muted)]">
+      <p className="register-form__footer">
         Already have an account?{" "}
-        <Link
-          href="/login"
-          className="font-semibold text-[var(--color-accent)] hover:underline"
-        >
+        <Link href="/login" className="register-form__link">
           Sign in
         </Link>
       </p>

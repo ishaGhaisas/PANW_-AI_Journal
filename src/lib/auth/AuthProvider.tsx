@@ -14,6 +14,9 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Provider component that manages authentication state and provides auth methods
+ */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,16 +30,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  /**
+   * Handles user sign in
+   */
   const handleSignIn = async (email: string, password: string) => {
     const user = await signIn(email, password);
     return user;
   };
 
+  /**
+   * Handles user sign up
+   */
   const handleSignUp = async (email: string, password: string) => {
     const user = await signUp(email, password);
     return user;
   };
 
+  /**
+   * Handles user sign out
+   */
   const handleSignOut = async () => {
     await signOut();
   };
@@ -56,6 +68,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Hook to access authentication context
+ */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

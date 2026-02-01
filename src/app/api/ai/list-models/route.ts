@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logError } from "@/lib/utils/errorHandler";
 
-// Helper endpoint to list available Gemini models
+/**
+ * GET endpoint to list available Google Gemini models
+ */
 export async function GET(request: NextRequest) {
   try {
     const apiKey = process.env.AI_API_KEY;
 
     if (!apiKey) {
-      return NextResponse.json(
-        { error: "AI API key not configured" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "AI API key not configured" }, { status: 400 });
     }
 
     const response = await fetch(
@@ -24,24 +24,21 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const error = await response.text();
-      return NextResponse.json(
-        { error: `Failed to fetch models: ${error}` },
-        { status: response.status }
-      );
+      return NextResponse.json({ error: `Failed to fetch models: ${error}` }, { status: response.status });
     }
 
     const data = await response.json();
-    
-    // Filter models that support generateContent
-    const availableModels = data.models
-      ?.filter((model: any) => 
-        model.supportedGenerationMethods?.includes("generateContent")
-      )
-      .map((model: any) => ({
-        name: model.name,
-        displayName: model.displayName,
-        description: model.description,
-      })) || [];
+
+    const availableModels =
+      data.models
+        ?.filter((model: { supportedGenerationMethods?: string[] }) =>
+          model.supportedGenerationMethods?.includes("generateContent")
+        )
+        .map((model: { name: string; displayName: string; description: string }) => ({
+          name: model.name,
+          displayName: model.displayName,
+          description: model.description,
+        })) || [];
 
     return NextResponse.json(
       {
@@ -50,13 +47,9 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error("Error listing models:", error);
-    return NextResponse.json(
-      {
-        error: error.message || "Failed to list models",
-      },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    logError("Error listing models", error);
+    const message = error instanceof Error ? error.message : "Failed to list models";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

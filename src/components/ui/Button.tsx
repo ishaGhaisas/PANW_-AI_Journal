@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
+
 type ButtonProps = {
   children: React.ReactNode;
   onClick?: () => void;
+  href?: string;
   variant?: "primary" | "secondary" | "ghost";
   disabled?: boolean;
   loading?: boolean;
@@ -13,6 +16,7 @@ type ButtonProps = {
 export default function Button({
   children,
   onClick,
+  href,
   variant = "primary",
   disabled = false,
   loading = false,
@@ -26,17 +30,31 @@ export default function Button({
     primary:
       "bg-[var(--color-accent)] text-white hover:opacity-90 focus:ring-[var(--color-accent)]",
     secondary:
-      "bg-[var(--color-shell)] text-[var(--color-text)] hover:bg-[var(--color-paper)] focus:ring-[var(--color-accent)]",
+      "bg-[var(--color-shell)] text-[var(--color-text)] hover:bg-[#DCDBD9] focus:ring-[var(--color-accent)]",
     ghost:
       "bg-transparent text-[var(--color-text)] hover:bg-[var(--color-shell)] focus:ring-[var(--color-accent)]",
   };
+
+  const combinedClassName = `${baseStyles} ${variantStyles[variant]} ${className}`;
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={combinedClassName}
+        onClick={disabled || loading ? (e) => e.preventDefault() : onClick}
+      >
+        {loading ? "Loading..." : children}
+      </Link>
+    );
+  }
 
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
-      className={`${baseStyles} ${variantStyles[variant]} ${className}`}
+      className={combinedClassName}
     >
       {loading ? "Loading..." : children}
     </button>

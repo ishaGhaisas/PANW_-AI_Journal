@@ -9,6 +9,9 @@ type ProtectedRouteProps = {
   children: React.ReactNode;
 };
 
+/**
+ * Component that protects routes by redirecting unauthenticated users to login
+ */
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -28,7 +31,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user) {
-    return null; // Will redirect
+    return null;
   }
 
   return <>{children}</>;

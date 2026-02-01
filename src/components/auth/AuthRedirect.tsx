@@ -9,7 +9,9 @@ type AuthRedirectProps = {
   children: React.ReactNode;
 };
 
-// Redirects authenticated users away from auth pages (login/register)
+/**
+ * Component that redirects authenticated users away from auth pages to home
+ */
 export default function AuthRedirect({ children }: AuthRedirectProps) {
   const { user, loading } = useAuth();
   const router = useRouter();

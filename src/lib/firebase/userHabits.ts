@@ -1,11 +1,12 @@
 import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 import { db } from "./config";
+import { FIREBASE_COLLECTIONS } from "../constants";
 import type { UserHabits, Habit } from "@/lib/habits";
 
-const USER_HABITS_COLLECTION = "userHabits";
+const USER_HABITS_COLLECTION = FIREBASE_COLLECTIONS.USER_HABITS;
 
 /**
- * Get user's habit list
+ * Gets user's habit list from Firestore
  */
 export async function getUserHabits(userId: string): Promise<UserHabits> {
   try {
@@ -13,24 +14,21 @@ export async function getUserHabits(userId: string): Promise<UserHabits> {
     const userHabitsSnap = await getDoc(userHabitsRef);
 
     if (!userHabitsSnap.exists()) {
-      // Return empty array if user hasn't set up habits yet
       return [];
     }
 
     const data = userHabitsSnap.data();
     return (data.habits || []) as UserHabits;
-  } catch (error: any) {
-    throw new Error(`Failed to get user habits: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Failed to get user habits: ${message}`);
   }
 }
 
 /**
- * Save user's habit list
+ * Saves user's habit list to Firestore
  */
-export async function saveUserHabits(
-  userId: string,
-  habits: UserHabits
-): Promise<void> {
+export async function saveUserHabits(userId: string, habits: UserHabits): Promise<void> {
   try {
     const userHabitsRef = doc(db, USER_HABITS_COLLECTION, userId);
     await setDoc(
@@ -41,13 +39,14 @@ export async function saveUserHabits(
       },
       { merge: true }
     );
-  } catch (error: any) {
-    throw new Error(`Failed to save user habits: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Failed to save user habits: ${message}`);
   }
 }
 
 /**
- * Generate a unique ID for a new habit
+ * Generates a unique ID for a new habit
  */
 export function generateHabitId(): string {
   return `habit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

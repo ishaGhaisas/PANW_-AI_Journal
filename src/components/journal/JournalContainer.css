@@ -1,0 +1,38 @@
+.journal-container__error {
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+  background-color: rgb(254 242 242);
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  color: rgb(220 38 38);
+}
+
+.journal-container__message {
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.journal-container__message--success {
+  background-color: rgb(240 253 244);
+  color: rgb(22 163 74);
+}
+
+.journal-container__buttons {
+  margin-top: 1.5rem;
+}
+
+.journal-container__buttons-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .journal-container__buttons-wrapper {
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+}

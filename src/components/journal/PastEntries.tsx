@@ -2,291 +2,333 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { getUserJournalEntries } from "@/lib/firebase/journal";
 import { getUserHabits } from "@/lib/firebase/userHabits";
+import { getMoodColor, MOOD_CATEGORIES } from "@/lib/moodCategories";
+import { formatDate, toDate, getMondayOfWeek, isSunday } from "@/lib/utils/dates";
+import { formatRelativeDate, formatWeekRange, getTextPreview } from "@/lib/utils/dateFormatters";
+import { getUserFriendlyError } from "@/lib/utils/errorHandler";
+import { isAuthenticated } from "@/lib/utils/validation";
+import { FIREBASE_COLLECTIONS, WEEKLY_REFLECTION_DAYS } from "@/lib/constants";
+import { Timestamp, collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase/config";
+import Button from "@/components/ui/Button";
 import type { JournalEntry } from "@/types/journal";
-import type { Habit } from "@/lib/habits";
-import { Timestamp } from "firebase/firestore";
+import "./PastEntries.css";
 
+type EntryDetailModalProps = {
+  entry: JournalEntry;
+  onClose: () => void;
+  userHabitLabels: Record<string, string>;
+};
+
+/**
+ * Modal component displaying full details of a journal entry
+ */
+function EntryDetailModal({ entry, onClose, userHabitLabels }: EntryDetailModalProps) {
+  const formattedDate = formatDate(entry.date);
+  const displayMood = entry.moodManual || entry.moodSuggested;
+
+  return (
+    <div className="past-entries__modal-overlay">
+      <div className="past-entries__modal-content">
+        <button onClick={onClose} className="past-entries__modal-close">
+          ×
+        </button>
+        <h2 className="past-entries__modal-title">{formattedDate}</h2>
+        <div className="past-entries__modal-section">
+          <div>
+            <h3 className="past-entries__modal-section-header">Mood</h3>
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-block h-4 w-4"
+                style={{ backgroundColor: getMoodColor(displayMood) }}
+              />
+              <p className="text-lg font-medium text-[var(--color-text)]">{displayMood}</p>
+            </div>
+          </div>
+          <div>
+            <h3 className="past-entries__modal-section-header">Your Entry</h3>
+            <p className="past-entries__modal-text">
+              {entry.text}
+            </p>
+          </div>
+          {entry.reflection && (
+            <div>
+              <h3 className="past-entries__modal-section-header">AI Reflection</h3>
+              <p className="past-entries__modal-text">
+                {entry.reflection}
+              </p>
+            </div>
+          )}
+          {entry.followUpQuestion && (
+            <div>
+              <h3 className="past-entries__modal-section-header">Follow-up Question</h3>
+              <p className="past-entries__modal-text past-entries__modal-text--italic">
+                {entry.followUpQuestion}
+              </p>
+              {entry.followUpResponse && (
+                <div className="past-entries__modal-response">
+                  <p className="past-entries__modal-response-text">
+                    {entry.followUpResponse}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          {entry.habits && Object.keys(entry.habits).length > 0 && (
+            <div>
+              <h3 className="past-entries__modal-section-header">Habits</h3>
+              <ul className="past-entries__modal-list">
+                {Object.entries(entry.habits).map(([habitId, completed]) => (
+                  <li key={habitId} className="past-entries__modal-list-item">
+                    <span className="past-entries__modal-checkmark">{completed ? "✓" : "○"}</span>
+                    <span>{userHabitLabels[habitId] || habitId}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {entry.sleepHours !== undefined && entry.sleepHours !== null && (
+            <div>
+              <h3 className="past-entries__modal-section-header">Sleep</h3>
+              <p className="text-lg font-medium text-[var(--color-text)]">
+                {entry.sleepHours} hours
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Main component displaying list of past journal entries with weekly reflection triggers
+ */
 export default function PastEntries() {
   const { user } = useAuth();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
+  const [userHabitLabels, setUserHabitLabels] = useState<Record<string, string>>({});
+  const [showLegend, setShowLegend] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      loadPastEntries();
-    }
+    if (!isAuthenticated(user)) return;
+
+    loadUserHabits();
+
+    const q = query(
+      collection(db, FIREBASE_COLLECTIONS.JOURNAL_ENTRIES),
+      where("userId", "==", user.uid),
+      orderBy("date", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const entriesList: JournalEntry[] = [];
+        querySnapshot.forEach((doc) => {
+          entriesList.push({
+            id: doc.id,
+            ...doc.data(),
+          } as JournalEntry);
+        });
+        setEntries(entriesList);
+        setLoading(false);
+      },
+      (error) => {
+        getUserFriendlyError(error, "Failed to load past entries");
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, [user]);
 
-  const loadPastEntries = async () => {
-    if (!user) return;
+  /**
+   * Loads user habit labels for display in entry details
+   */
+  const loadUserHabits = async () => {
+    if (!isAuthenticated(user)) return;
     try {
-      setLoading(true);
-      const allEntries = await getUserJournalEntries(user.uid);
-      // Show all entries including today (users can write multiple times a day)
-      setEntries(allEntries);
+      const habits = await getUserHabits(user.uid);
+      const labels: Record<string, string> = {};
+      habits.forEach((habit) => {
+        labels[habit.id] = habit.label;
+      });
+      setUserHabitLabels(labels);
     } catch (error) {
-      console.error("Failed to load past entries:", error);
-    } finally {
-      setLoading(false);
+      getUserFriendlyError(error, "Failed to load user habits");
     }
   };
 
-  const formatDate = (date: Date | Timestamp): string => {
-    const dateObj = date instanceof Timestamp 
-      ? date.toDate() 
-      : new Date(date);
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const entryDate = new Date(dateObj);
-    entryDate.setHours(0, 0, 0, 0);
-    
-    const diffTime = today.getTime() - entryDate.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    
-    // Format as "Mon Jan 15" for older entries
-    return entryDate.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
+  /**
+   * Gets mood display value for an entry
+   */
   const getMoodDisplay = (entry: JournalEntry): string => {
     return entry.moodManual || entry.moodSuggested || "—";
   };
 
-  const getTextPreview = (text: string, maxLength: number = 50): string => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength).trim() + "...";
+  /**
+   * Renders mood color dot indicator
+   */
+  const getMoodDot = (entry: JournalEntry) => {
+    const mood = getMoodDisplay(entry);
+    const color = getMoodColor(mood);
+    return (
+      <span
+        className="past-entries__entry-mood-dot"
+        style={{ backgroundColor: color }}
+        title={mood}
+      />
+    );
+  };
+
+  /**
+   * Determines if weekly reflection button should be shown after current entry
+   */
+  const shouldShowWeeklyReflection = (currentIndex: number, entries: JournalEntry[]): boolean => {
+    if (currentIndex === 0) return false;
+
+    const currentEntry = entries[currentIndex];
+    const currentDate = toDate(currentEntry.date);
+    currentDate.setHours(0, 0, 0, 0);
+
+    const currentMonday = getMondayOfWeek(currentDate);
+    const daysInWeek = new Set<string>();
+
+    for (let i = 0; i < entries.length; i++) {
+      const entryDate = toDate(entries[i].date);
+      entryDate.setHours(0, 0, 0, 0);
+      const entryMonday = getMondayOfWeek(entryDate);
+
+      if (entryMonday.getTime() === currentMonday.getTime()) {
+        const dateKey = entryDate.toISOString().split("T")[0];
+        daysInWeek.add(dateKey);
+      }
+    }
+
+    if (daysInWeek.size < WEEKLY_REFLECTION_DAYS) return false;
+
+    if (isSunday(currentDate)) return true;
+
+    if (currentIndex < entries.length - 1) {
+      const nextEntry = entries[currentIndex + 1];
+      const nextDate = toDate(nextEntry.date);
+      const nextMonday = getMondayOfWeek(nextDate);
+
+      if (nextMonday.getTime() !== currentMonday.getTime()) {
+        return true;
+      }
+    } else {
+      return true;
+    }
+
+    return false;
   };
 
   if (loading) {
     return (
-      <div className="rounded-lg bg-[var(--color-shell)] p-6">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-          PAST
-        </h2>
-        <p className="text-sm text-[var(--color-muted)]">Loading...</p>
+      <div className="past-entries">
+        <h2 className="past-entries__header">PAST</h2>
+        <p className="past-entries__empty">Loading...</p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="rounded-lg bg-[var(--color-shell)] p-6">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-          PAST
-        </h2>
+      <div className="past-entries">
+        <div className="past-entries__header-container">
+          <h2 className="past-entries__header">PAST</h2>
+          {entries.length > 0 && (
+            <button
+              onClick={() => setShowLegend(!showLegend)}
+              className="past-entries__legend-toggle"
+            >
+              What do the colors mean?
+            </button>
+          )}
+        </div>
+
+        {entries.length > 0 && showLegend && (
+          <div className="mb-4 pb-4 border-b border-[var(--color-muted)] border-opacity-10">
+            <div className="flex flex-wrap gap-3">
+              {MOOD_CATEGORIES.map((category) => (
+                <div key={category.id} className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-3 w-3 rounded-sm"
+                    style={{ backgroundColor: category.color }}
+                    title={category.label}
+                  />
+                  <span className="text-xs text-[var(--color-text)]">{category.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {entries.length === 0 ? (
-          <p className="text-sm text-[var(--color-muted)]">
-            No past entries yet.
-          </p>
+          <p className="past-entries__empty">No past entries yet.</p>
         ) : (
-          <div className="space-y-3 max-h-[600px] overflow-y-auto">
-            {entries.map((entry) => {
-              const entryDate = entry.date instanceof Timestamp 
-                ? entry.date.toDate() 
-                : new Date(entry.date);
-              
+          <div className="past-entries__list max-h-[600px] overflow-y-auto">
+            {entries.map((entry, index) => {
+              const entryDate = toDate(entry.date);
+              const showReflection = shouldShowWeeklyReflection(index, entries);
+
               return (
-                <button
-                  key={entry.id}
-                  onClick={() => setSelectedEntry(entry)}
-                  className="w-full text-left rounded-md p-3 hover:bg-[var(--color-paper)] transition-colors border border-transparent hover:border-[var(--color-shell)]"
-                >
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <span className="text-xs font-semibold text-[var(--color-muted)] uppercase">
-                      {formatDate(entryDate)}
-                    </span>
-                    <span className="text-xs text-[var(--color-accent)] font-medium">
-                      {getMoodDisplay(entry)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-[var(--color-text)] line-clamp-2">
-                    {getTextPreview(entry.text)}
-                  </p>
-                </button>
+                <div key={entry.id} className="space-y-3">
+                  <button
+                    onClick={() => setSelectedEntry(entry)}
+                    className="past-entries__entry w-full text-left"
+                  >
+                    <div className="past-entries__entry-header">
+                      {getMoodDot(entry)}
+                      <span className="past-entries__entry-date uppercase">
+                        {formatRelativeDate(entryDate)}
+                      </span>
+                    </div>
+                    <p className="past-entries__entry-preview">
+                      {getTextPreview(entry.text)}
+                    </p>
+                  </button>
+
+                  {showReflection && (
+                    <div className="my-4 pt-4 border-t border-[var(--color-muted)] border-opacity-20">
+                      <div className="rounded-md bg-[var(--color-paper)] p-4 space-y-3">
+                        <div>
+                          <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)] mb-1">
+                            WEEKLY REFLECTION
+                          </h3>
+                          <p className="text-xs text-[var(--color-muted)] italic">
+                            A pause to look back at the past 7 days
+                          </p>
+                        </div>
+                        <Button
+                          href={`/weekly-reflection?week=${formatWeekRange(entryDate)}`}
+                          variant="ghost"
+                          className="w-full text-xs py-2 text-[var(--color-accent)] hover:underline cursor-pointer"
+                        >
+                          View reflection
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
         )}
       </div>
 
-      {/* Entry Detail Modal */}
       {selectedEntry && (
         <EntryDetailModal
           entry={selectedEntry}
           onClose={() => setSelectedEntry(null)}
+          userHabitLabels={userHabitLabels}
         />
       )}
     </>
-  );
-}
-
-function EntryDetailModal({
-  entry,
-  onClose,
-}: {
-  entry: JournalEntry;
-  onClose: () => void;
-}) {
-  const { user } = useAuth();
-  const [userHabits, setUserHabits] = useState<Habit[]>([]);
-
-  useEffect(() => {
-    if (user && entry.habits) {
-      loadUserHabits();
-    }
-  }, [user, entry.habits]);
-
-  const loadUserHabits = async () => {
-    if (!user) return;
-    try {
-      const habits = await getUserHabits(user.uid);
-      setUserHabits(habits);
-    } catch (error) {
-      console.error("Failed to load user habits:", error);
-    }
-  };
-
-  const getHabitLabel = (habitId: string): string => {
-    const habit = userHabits.find((h) => h.id === habitId);
-    return habit?.label || habitId;
-  };
-
-  const entryDate = entry.date instanceof Timestamp 
-    ? entry.date.toDate() 
-    : new Date(entry.date);
-
-  const formattedDate = entryDate.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const getMoodDisplay = (): string => {
-    return entry.moodManual || entry.moodSuggested || "—";
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-[var(--color-paper)] p-8 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="mb-6 flex items-start justify-between">
-          <div>
-            <h3
-              className="text-lg font-journal text-[var(--color-text)] mb-1"
-              style={{ fontFamily: "var(--font-journal)" }}
-            >
-              {formattedDate}
-            </h3>
-            <div className="flex items-center gap-4 text-sm">
-              <span className="text-[var(--color-muted)]">Mood:</span>
-              <span className="text-[var(--color-accent)] font-medium">
-                {getMoodDisplay()}
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-2xl text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Journal Text */}
-        <div className="mb-6">
-          <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-            Entry
-          </h4>
-          <p
-            className="font-journal text-base leading-relaxed text-[var(--color-text)] whitespace-pre-wrap"
-            style={{ fontFamily: "var(--font-journal)" }}
-          >
-            {entry.text}
-          </p>
-        </div>
-
-        {/* AI Reflection */}
-        {entry.reflection && (
-          <div className="mb-6">
-            <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-              Reflection
-            </h4>
-            <p
-              className="font-journal text-base leading-relaxed text-[var(--color-text)]"
-              style={{ fontFamily: "var(--font-journal)" }}
-            >
-              {entry.reflection}
-            </p>
-          </div>
-        )}
-
-        {/* Follow-up Question */}
-        {entry.followUpQuestion && (
-          <div className="mb-6">
-            <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-              Follow-up Question
-            </h4>
-            <p
-              className="font-journal text-base leading-relaxed text-[var(--color-text)] italic"
-              style={{ fontFamily: "var(--font-journal)" }}
-            >
-              {entry.followUpQuestion}
-            </p>
-          </div>
-        )}
-
-        {/* Habits */}
-        {entry.habits && Object.keys(entry.habits).length > 0 && (
-          <div className="mb-6">
-            <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-              Habits
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(entry.habits).map(([habitId, completed]) => (
-                <span
-                  key={habitId}
-                  className={`text-sm px-2 py-1 rounded ${
-                    completed
-                      ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)]"
-                      : "bg-[var(--color-shell)] text-[var(--color-muted)]"
-                  }`}
-                >
-                  {getHabitLabel(habitId)} {completed ? "✓" : "○"}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Sleep */}
-        {entry.sleepHours !== undefined && entry.sleepHours !== null && (
-          <div>
-            <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--color-muted)]">
-              Sleep
-            </h4>
-            <p className="text-base text-[var(--color-text)]">
-              {entry.sleepHours} hours
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
