@@ -8,7 +8,7 @@ BuJo AI is an AI-augmented bullet journaling application that combines the struc
 
 The app is deployed and available at: **[https://panw-ai-journal.vercel.app/login](https://panw-ai-journal.vercel.app/login)**
 
-**Demo Video**: Watch a walkthrough of the app on [YouTube](https://youtu.be/tSCPBPdh9FE)
+**Demo Video**: Watch a walkthrough of the app on [YouTube](https://youtu.be/4TBDODwNOI0)
 
 Simply create an account and start journaling!
 
