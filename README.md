@@ -287,7 +287,6 @@ The app intentionally uses a **small number of focused screens**. Each screen ex
 The following ideas were considered but intentionally deferred at this stage:
 
 - Shared journals (couples, friends, families)  
-- Statistical correlation dashboards  
 - Social features or comparisons  
 - Notifications and reminders  
 
@@ -740,7 +739,6 @@ ai_journal/
 ### Future Enhancements (Documented, Not Implemented)
 
 - Shared journals (couples, families)
-- Long-term correlation analysis
 - Social features
 - Notifications and reminders
 
